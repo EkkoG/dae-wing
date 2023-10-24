@@ -19,7 +19,10 @@ import (
 	"github.com/daeuniverse/dae-wing/db"
 	"github.com/daeuniverse/dae-wing/graphql"
 	"github.com/daeuniverse/dae-wing/graphql/service/config"
+
+	"github.com/daeuniverse/dae-wing/graphql/service/subscription"
 	"github.com/daeuniverse/dae-wing/webrender"
+	"github.com/go-co-op/gocron"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/graph-gophers/graphql-go/relay"
 	"github.com/rs/cors"
@@ -79,6 +82,13 @@ var (
 			if err := db.InitDatabase(cfgDir); err != nil {
 				logrus.Fatalln("Failed to init db:", err)
 			}
+
+			s := gocron.NewScheduler(time.Local)
+			_, err := s.Every(3600*2).Seconds().Do(func() {
+				subscription.UpdateAll(context.TODO())
+				logrus.Info("Subscription updated, and will be updated again in 20 seconds.")
+			})
+			s.StartAsync()
 
 			// Run dae.
 			var logOpts *lumberjack.Logger

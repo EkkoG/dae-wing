@@ -168,6 +168,19 @@ func AutoUpdateVersionByIds(d *gorm.DB, ids []uint) (err error) {
 	return nil
 }
 
+func UpdateAll(ctx context.Context) {
+	var subs []db.Subscription
+	if err := db.DB(ctx).Find(&subs).Error; err != nil {
+		logrus.Error(err)
+		return
+	}
+	for _, sub := range subs {
+		if _, err := Update(ctx, common.EncodeCursor(sub.ID)); err != nil {
+			logrus.Error(err)
+		}
+	}
+}
+
 func Update(ctx context.Context, _id graphql.ID) (r *Resolver, err error) {
 	subId, err := common.DecodeCursor(_id)
 	if err != nil {
