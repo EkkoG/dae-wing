@@ -84,9 +84,10 @@ var (
 			}
 
 			s := gocron.NewScheduler(time.Local)
-			_, err := s.Every(3600*2).Seconds().Do(func() {
+			internal := 3600 * 2
+			_, err := s.Every(internal).Seconds().Do(func() {
 				subscription.UpdateAll(context.TODO())
-				logrus.Info("Subscription updated, and will be updated again in 20 seconds.")
+				logrus.Info("Subscription updated, and will be updated again in ", internal, " seconds")
 			})
 			s.StartAsync()
 
