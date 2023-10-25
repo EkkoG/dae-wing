@@ -19,6 +19,7 @@ import (
 	"github.com/daeuniverse/dae-wing/graphql/internal"
 	"github.com/daeuniverse/dae-wing/graphql/service/node"
 	"github.com/daeuniverse/dae/common/subscription"
+	"github.com/go-co-op/gocron"
 	"github.com/graph-gophers/graphql-go"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -168,16 +169,44 @@ func AutoUpdateVersionByIds(d *gorm.DB, ids []uint) (err error) {
 	return nil
 }
 
+var schedulerCache = make(map[uint]*gocron.Scheduler)
+
 func UpdateAll(ctx context.Context) {
+
 	var subs []db.Subscription
 	if err := db.DB(ctx).Find(&subs).Error; err != nil {
 		logrus.Error(err)
 		return
 	}
 	for _, sub := range subs {
-		if _, err := UpdateById(ctx, sub.ID); err != nil {
-			logrus.Error(err)
-		}
+		AddUpdateScheduler(ctx, sub.ID)
+	}
+}
+
+func AddUpdateScheduler(ctc context.Context, id uint) {
+	var sub db.Subscription
+	if err := db.DB(ctc).Where("id = ?", id).First(&sub).Error; err != nil {
+		logrus.Error(err)
+		return
+	}
+	if sub.CronEnable && schedulerCache[sub.ID] == nil {
+		s := gocron.NewScheduler(time.Local)
+		logrus.Info("Subscription " + *sub.Tag + " update task enabled, with exp " + sub.CronExp)
+		s.Cron(sub.CronExp).Do(func() {
+			if _, err := UpdateById(ctc, sub.ID); err != nil {
+				logrus.Error(err)
+			}
+		})
+		s.StartAsync()
+		schedulerCache[sub.ID] = s
+	}
+}
+
+func RemoveUpdateScheduler(id uint) {
+	if schedulerCache[id] != nil {
+		logrus.Info("Subscription " + string(id) + " update task disabled")
+		schedulerCache[id].Stop()
+		delete(schedulerCache, id)
 	}
 }
 
@@ -300,6 +329,10 @@ func Remove(ctx context.Context, _ids []graphql.ID) (n int32, err error) {
 		Delete(&db.Subscription{})
 	if q.Error != nil {
 		return 0, q.Error
+	}
+
+	for _, id := range ids {
+		RemoveUpdateScheduler(id)
 	}
 
 	return int32(q.RowsAffected), nil

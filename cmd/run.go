@@ -22,7 +22,6 @@ import (
 
 	"github.com/daeuniverse/dae-wing/graphql/service/subscription"
 	"github.com/daeuniverse/dae-wing/webrender"
-	"github.com/go-co-op/gocron"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/graph-gophers/graphql-go/relay"
 	"github.com/rs/cors"
@@ -83,13 +82,7 @@ var (
 				logrus.Fatalln("Failed to init db:", err)
 			}
 
-			s := gocron.NewScheduler(time.Local)
-			internal := 3600 * 2
-			_, err := s.Every(internal).Seconds().Do(func() {
-				subscription.UpdateAll(context.TODO())
-				logrus.Info("Subscription update started, and will be start again in ", internal, " seconds")
-			})
-			s.StartAsync()
+			subscription.UpdateAll(context.TODO())
 
 			// Run dae.
 			var logOpts *lumberjack.Logger
