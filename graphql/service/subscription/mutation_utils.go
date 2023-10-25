@@ -175,7 +175,7 @@ func UpdateAll(ctx context.Context) {
 		return
 	}
 	for _, sub := range subs {
-		if _, err := Update(ctx, common.EncodeCursor(sub.ID)); err != nil {
+		if _, err := UpdateById(ctx, sub.ID); err != nil {
 			logrus.Error(err)
 		}
 	}
@@ -186,6 +186,15 @@ func Update(ctx context.Context, _id graphql.ID) (r *Resolver, err error) {
 	if err != nil {
 		return nil, err
 	}
+	var m *db.Subscription
+	m, err = UpdateById(ctx, subId)
+	if err != nil {
+		return nil, err
+	}
+	return &Resolver{Subscription: m}, nil
+}
+
+func UpdateById(ctx context.Context, subId uint) (sub *db.Subscription, err error) {
 	// Fetch node links.
 	var m db.Subscription
 	if err = db.DB(ctx).Where(&db.Subscription{ID: subId}).First(&m).Error; err != nil {
@@ -247,7 +256,7 @@ func Update(ctx context.Context, _id graphql.ID) (r *Resolver, err error) {
 	if err = AutoUpdateVersionByIds(tx, []uint{subId}); err != nil {
 		return nil, err
 	}
-	return &Resolver{Subscription: &m}, nil
+	return &m, nil
 }
 
 func Remove(ctx context.Context, _ids []graphql.ID) (n int32, err error) {

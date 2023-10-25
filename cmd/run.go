@@ -87,7 +87,7 @@ var (
 			internal := 3600 * 2
 			_, err := s.Every(internal).Seconds().Do(func() {
 				subscription.UpdateAll(context.TODO())
-				logrus.Info("Subscription updated, and will be updated again in ", internal, " seconds")
+				logrus.Info("Subscription update started, and will be start again in ", internal, " seconds")
 			})
 			s.StartAsync()
 
